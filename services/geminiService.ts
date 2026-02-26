@@ -5,9 +5,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 const getAI = () => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn("VITE_GEMINI_API_KEY is not defined.");
+    console.warn("VITE_GEMINI_API_KEY is not defined. Please check your Vercel Environment Variables.");
+    // Return a dummy client so the app doesn't crash, but calls will still fail and show the error message.
+    return new GoogleGenAI({ apiKey: 'MISSING_API_KEY' });
   }
-  return new GoogleGenAI({ apiKey: apiKey || '' });
+  return new GoogleGenAI({ apiKey });
 };
 
 export const analyzeThreat = async (imageData: string): Promise<string> => {
