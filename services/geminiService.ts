@@ -1,13 +1,19 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Fix: Always initialize using the required named parameter and obtain API key directly from process.env.API_KEY.
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Fix: Use the standard Vite environment variable and a valid Gemini model.
+const getAI = () => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn("VITE_GEMINI_API_KEY is not defined.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 export const analyzeThreat = async (imageData: string): Promise<string> => {
   const ai = getAI();
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-1.5-flash',
     contents: {
       parts: [
         {
