@@ -46,6 +46,7 @@ export const EXPERIENCE = [
     company: 'PromptiX',
     role: 'AI & Full Stack Developer',
     period: 'Dec 2025 – Present',
+    liveLink: 'https://promptix.pro/',
     points: [
       'Built full-stack platform for AI services using React, Node.js, and MongoDB.',
       'Implemented intelligent UI animations with tsparticles and parallax effects.',
@@ -57,6 +58,7 @@ export const EXPERIENCE = [
     company: 'PromptiX (Internal)',
     role: 'CRM Platform Development',
     period: '2025',
+    liveLink: 'https://promptixcrm-two.vercel.app/',
     points: [
       'Led end-to-end lifecycle for Internal Operations Management System.',
       'Delivered 8 core modules: Attendance, Payroll, Leave, Tasks, and more.',
@@ -67,7 +69,8 @@ export const EXPERIENCE = [
   {
     company: 'product (internal)',
     role: 'Mr. Coach Pro Developer',
-    period: '2024',
+    period: '2025',
+    liveLink: 'https://www.mrcoach.in/',
     points: [
       'Developed Sports Event Booking System using React/TypeScript.',
       'Integrated RESTful APIs for dynamic data workflows and scheduling.',
@@ -96,24 +99,42 @@ export const PROJECTS = [
     title: 'Text Sentiment Classification',
     tech: 'Python, NLP, Scikit-learn',
     description: 'End-to-end NLP pipeline achieving 85%+ accuracy using Logistic Regression and TF-IDF feature extraction.',
-    link: '#'
+    link: 'https://github.com/Kishorekumarps07/text-analysis-project.git'
   },
   {
     title: 'Personality Predictor',
     tech: 'ML, Scikit-learn',
     description: 'ML pipeline to predict personality traits from structured user inputs with rigorous feature engineering.',
-    link: '#'
+    link: 'https://github.com/Kishorekumarps07/personality-predictor.git'
   },
   {
     title: 'Mobile Recharge Portal',
     tech: 'React, Node.js, Payments',
     description: 'Secure full-stack application with integrated payment gateway APIs, reducing transaction failures by 15%.',
-    link: '#'
+    link: 'https://github.com/Kishorekumarps07/fullstack.git'
   },
   {
     title: 'Bookstore Management System',
     tech: 'Java, Spring Boot, SQL',
     description: 'Full-stack system using RESTful architecture and secure SQL transactions for multi-user order processing.',
-    link: '#'
+    link: 'https://github.com/Kishorekumarps07/digital-app.git'
+  }
+];
+
+export const LIVE_DEPLOYMENTS = [
+  {
+    title: 'PromptiX AI Platform',
+    url: 'https://promptix.pro/',
+    description: 'AI-powered full-stack platform with intelligent UI features.'
+  },
+  {
+    title: 'Mr. Coach Pro',
+    url: 'https://www.mrcoach.in/',
+    description: 'Dynamic sports event booking system.'
+  },
+  {
+    title: 'PromptiX CRM',
+    url: 'https://promptixcrm-two.vercel.app/',
+    description: 'Internal Operations Management System.'
   }
 ];
