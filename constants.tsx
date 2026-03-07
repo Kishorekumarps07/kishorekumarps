@@ -43,6 +43,17 @@ export const SKILL_CATEGORIES = [
 
 export const EXPERIENCE = [
   {
+    company: 'Lead Collector (Internal)',
+    role: 'Lead Management Systems',
+    period: '2024',
+    liveLink: 'https://leadcollector.vercel.app/',
+    points: [
+      'Engineered a specialized lead collection platform for real-time data capture.',
+      'Integrated automated validation and management workflows to streamline lead processing.',
+      'Optimized performance for high-traffic scenarios using modern React and web best practices.'
+    ]
+  },
+  {
     company: 'PromptiX',
     role: 'AI & Full Stack Developer',
     period: 'Dec 2025 – Present',
@@ -122,6 +133,11 @@ export const PROJECTS = [
 ];
 
 export const LIVE_DEPLOYMENTS = [
+  {
+    title: 'Lead Collector',
+    url: 'https://leadcollector.vercel.app/',
+    description: 'Specialized lead collection and management system.'
+  },
   {
     title: 'PromptiX AI Platform',
     url: 'https://promptix.pro/',
