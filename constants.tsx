@@ -45,7 +45,7 @@ export const EXPERIENCE = [
   {
     company: 'Lead Collector (Internal)',
     role: 'Lead Management Systems',
-    period: '2024',
+    period: '2026',
     liveLink: 'https://leadcollector.vercel.app/',
     points: [
       'Engineered a specialized lead collection platform for real-time data capture.',
