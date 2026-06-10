@@ -43,6 +43,17 @@ export const SKILL_CATEGORIES = [
 
 export const EXPERIENCE = [
   {
+    company: 'Drux Health Store',
+    role: 'Full-Stack B2B2C Platform',
+    period: '2026',
+    liveLink: 'https://www.drux.in/',
+    points: [
+      'Engineered responsive Customer Storefront and Vendor Portal with custom bottom drawer sheets for mobile price breakdowns.',
+      'Integrated Razorpay payments and Shiprocket logistics with automated AWB tracking and dynamic credential injection.',
+      'Built robust Express/Prisma/PostgreSQL APIs secured by JWT and Upstash Redis rate-limiters, with non-blocking email notifications.'
+    ]
+  },
+  {
     company: 'Lead Collector (Internal)',
     role: 'Lead Management Systems',
     period: '2026',
@@ -152,5 +163,10 @@ export const LIVE_DEPLOYMENTS = [
     title: 'PromptiX CRM',
     url: 'https://promptixcrm-two.vercel.app/',
     description: 'Internal Operations Management System.'
+  },
+  {
+    title: 'Druxx Health Store',
+    url: 'https://www.drux.in/',
+    description: 'Premium multi-vendor health and wellness marketplace.'
   }
 ];
