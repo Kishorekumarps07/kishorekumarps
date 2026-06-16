@@ -1,15 +1,76 @@
-
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Scan, ShieldAlert, BrainCircuit, Terminal, Activity, Crosshair } from 'lucide-react';
-import { analyzeThreat } from '../services/geminiService';
+import { Camera, Scan, ShieldAlert, BrainCircuit, Terminal, Activity, Crosshair, Upload } from 'lucide-react';
+import { analyzeThreat, ImageMetrics } from '../services/geminiService';
+
+const getImgMetrics = (ctx: CanvasRenderingContext2D, width: number, height: number): ImageMetrics => {
+  const sampleW = 50;
+  const sampleH = 50;
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const data = imgData.data;
+  
+  let totalBrightness = 0;
+  let rSum = 0, gSum = 0, bSum = 0;
+  let edgeDensity = 0;
+  
+  // Ensure we jump by multiples of 4 to stay aligned with [R,G,B,A] sequences
+  const step = Math.max(4, Math.floor(data.length / (sampleW * sampleH * 4)) * 4);
+  let count = 0;
+  
+  for (let i = 0; i < data.length; i += step) {
+    if (i + 2 >= data.length) break;
+    const r = data[i];
+    const g = data[i+1];
+    const b = data[i+2];
+    
+    rSum += r;
+    gSum += g;
+    bSum += b;
+    
+    const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+    totalBrightness += brightness;
+    count++;
+    
+    if (i + 4 < data.length) {
+      const nextR = data[i+4];
+      const nextG = data[i+5];
+      const nextB = data[i+6];
+      const diff = Math.abs(r - nextR) + Math.abs(g - nextG) + Math.abs(b - nextB);
+      if (diff > 90) {
+        edgeDensity++;
+      }
+    }
+  }
+  
+  const avgR = rSum / (count || 1);
+  const avgG = gSum / (count || 1);
+  const avgB = bSum / (count || 1);
+  const avgBrightness = totalBrightness / (count || 1);
+  
+  let dominantColor = 'neutral';
+  if (avgR > avgG + 15 && avgR > avgB + 15) dominantColor = 'red';
+  else if (avgG > avgR + 15 && avgG > avgB + 15) dominantColor = 'green';
+  else if (avgB > avgR + 15 && avgB > avgG + 15) dominantColor = 'blue';
+  else if (avgR > 180 && avgG > 180 && avgB < 120) dominantColor = 'yellow';
+  
+  return {
+    brightness: avgBrightness,
+    dominantColor,
+    edgeDensity: ((edgeDensity / (count || 1)) * 100),
+    r: avgR,
+    g: avgG,
+    b: avgB
+  };
+};
 
 const SpiderSense: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [hudStats, setHudStats] = useState({ cpu: 0, ram: 0, link: 0 });
 
   useEffect(() => {
@@ -35,6 +96,8 @@ const SpiderSense: React.FC = () => {
       });
 
       console.log("Camera stream obtained:", stream.id);
+      setUploadedImage(null);
+      setResult(null);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -47,46 +110,94 @@ const SpiderSense: React.FC = () => {
     }
   };
 
-  const handleScan = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) {
-      console.error("Scan failed: Video or Canvas refs not found.");
-      return;
-    }
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    console.log("Starting neural scan...");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setUploadedImage(dataUrl);
+      setIsCameraActive(false);
+      setResult(null);
+      
+      // Release camera tracks if active
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const resetOptics = useCallback(() => {
+    setUploadedImage(null);
+    setResult(null);
+    setIsCameraActive(false);
+    
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  const handleScan = useCallback(async () => {
     setAnalyzing(true);
     setResult(null);
 
     const canvas = canvasRef.current;
-    const video = videoRef.current;
-
-    // Ensure canvas dimensions match video
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    if (!canvas) {
+      setAnalyzing(false);
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
-
-    if (ctx) {
-      try {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        console.log("Image data captured, sending for analysis...");
-
-        const analysis = await analyzeThreat(imageData);
-        console.log("Analysis received successfully.");
-        setResult(analysis);
-      } catch (err: any) {
-        console.error("Scan analysis error:", err);
-        setResult(`SYSTEM_ERROR: Neural-link synchronization failed.\n${err.message || "Unknown error occurred."}`);
-      } finally {
-        setAnalyzing(false);
-      }
-    } else {
-      console.error("Failed to get 2D context from canvas.");
+    if (!ctx) {
       setAnalyzing(false);
-      setResult("SYSTEM_ERROR: Graphics array initialization failed.");
+      return;
     }
-  }, []);
+
+    try {
+      if (uploadedImage) {
+        // Load uploaded image onto the canvas to draw pixel metrics
+        const img = new Image();
+        img.src = uploadedImage;
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+
+        canvas.width = img.naturalWidth || 800;
+        canvas.height = img.naturalHeight || 600;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const metrics = getImgMetrics(ctx, canvas.width, canvas.height);
+        console.log("Uploaded Image metrics:", metrics);
+
+        const analysis = await analyzeThreat(uploadedImage, metrics);
+        setResult(analysis);
+      } else if (videoRef.current) {
+        const video = videoRef.current;
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        const metrics = getImgMetrics(ctx, canvas.width, canvas.height);
+        console.log("Video Stream metrics:", metrics);
+
+        const analysis = await analyzeThreat(imageData, metrics);
+        setResult(analysis);
+      }
+    } catch (err: any) {
+      console.error("Scan error:", err);
+      setResult(`SYSTEM_ERROR: Neural-link synchronization failed.\n${err.message || "Unknown error occurred."}`);
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [uploadedImage]);
 
   return (
     <section id="analyzer" className="py-24 px-6 bg-black relative overflow-hidden">
@@ -121,39 +232,71 @@ const SpiderSense: React.FC = () => {
               "Kishore's Spider-Sense isn't just about danger—it's about technical clarity. Activate the optical sensors to analyze your environment through the lens of a Full-Stack Hero."
             </p>
 
-            <div className="flex-1 relative aspect-video bg-black rounded border-2 border-white/5 overflow-hidden group mb-8">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${isCameraActive ? 'opacity-100' : 'opacity-0'}`}
+            <div className="flex-1 relative aspect-video bg-black rounded border-2 border-white/5 overflow-hidden group mb-8 flex items-center justify-center">
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
               />
 
-              {!isCameraActive && (
+              {isCameraActive && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover opacity-100 transition-opacity duration-500"
+                />
+              )}
+
+              {!isCameraActive && uploadedImage && (
+                <img
+                  src={uploadedImage}
+                  alt="Static archive buffer"
+                  className="w-full h-full object-cover opacity-100 transition-opacity duration-500"
+                />
+              )}
+
+              {!isCameraActive && !uploadedImage && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-gradient-to-b from-[#111] to-black">
-                  <Activity size={48} className="text-red-600/20 mb-6" />
-                  <button
-                    onClick={startCamera}
-                    className="group/btn relative px-10 py-4 bg-transparent border-2 border-red-600 text-red-600 font-bebas text-3xl hover:bg-red-600 hover:text-white transition-all overflow-hidden"
-                  >
-                    <span className="relative z-10 flex items-center gap-3"><Camera /> BOOT OPTICS</span>
-                    <div className="absolute inset-0 bg-red-600/10 -translate-x-full group-hover/btn:translate-x-0 transition-transform duration-300"></div>
-                  </button>
-                  <p className="mt-4 font-mono text-[10px] text-white/20">AWAITING_INPUT_SIGNAL...</p>
+                   <Activity size={48} className="text-red-600/20 mb-6" />
+                   <div className="flex flex-col sm:flex-row gap-4 items-center justify-center z-10">
+                     <button
+                       onClick={startCamera}
+                       className="group/btn relative px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 font-bebas text-3xl hover:bg-red-600 hover:text-white transition-all overflow-hidden"
+                     >
+                       <span className="relative z-10 flex items-center gap-2"><Camera size={24} /> BOOT OPTICS</span>
+                       <div className="absolute inset-0 bg-red-600/10 -translate-x-full group-hover/btn:translate-x-0 transition-transform duration-300"></div>
+                     </button>
+                     <button
+                       onClick={() => fileInputRef.current?.click()}
+                       className="group/btn relative px-8 py-4 bg-transparent border-2 border-white/10 text-white/50 font-bebas text-3xl hover:border-red-600 hover:text-red-500 transition-all overflow-hidden"
+                     >
+                       <span className="relative z-10 flex items-center gap-2"><Upload size={24} /> UPLOAD FILE</span>
+                       <div className="absolute inset-0 bg-white/5 -translate-x-full group-hover/btn:translate-x-0 transition-transform duration-300"></div>
+                     </button>
+                   </div>
+                   <p className="mt-6 font-mono text-[10px] text-white/20">AWAITING_INPUT_SIGNAL (CAMERA OR FILE)...</p>
                 </div>
               )}
 
-              {isCameraActive && (
+              {(isCameraActive || uploadedImage) && (
                 <div className="absolute inset-0 pointer-events-none p-6 z-10">
                   {/* Top HUD */}
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start pointer-events-auto">
                     <div className="font-mono text-[8px] text-red-500 space-y-1">
-                      <div>SENS_MODE: INFRARED_TECH</div>
-                      <div>RES: 1280X720_STABLE</div>
+                      <div>SENS_MODE: {isCameraActive ? "INFRARED_TECH" : "FILE_ARCHIVE"}</div>
+                      <div>RES: {isCameraActive ? "1280X720_STABLE" : "STATIC_BUFFER"}</div>
                       <div>BUFF: {hudStats.ram}MB_RESV</div>
                     </div>
-                    <div className="w-12 h-12 border-t border-r border-red-600 opacity-50"></div>
+                    <button
+                      onClick={resetOptics}
+                      className="px-3 py-1 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white font-mono text-[8px] border border-red-600/40 rounded transition-all"
+                    >
+                      RESET_SENSORS
+                    </button>
                   </div>
 
                   {/* Center HUD */}
@@ -171,7 +314,7 @@ const SpiderSense: React.FC = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-                        <span className="font-mono text-[10px] text-red-500">LIVE_DATA_STREAM</span>
+                        <span className="font-mono text-[10px] text-red-500">{isCameraActive ? "LIVE_DATA_STREAM" : "STATIC_BUFFER_LOADED"}</span>
                       </div>
                       <div className="flex gap-1">
                         {[...Array(12)].map((_, i) => (
@@ -182,7 +325,7 @@ const SpiderSense: React.FC = () => {
                     <div className="font-mono text-[10px] text-red-500 text-right">
                       <div>CPU_LOAD: {hudStats.cpu}%</div>
                       <div>LINK_QUAL: {hudStats.link}%</div>
-                      <div>LATENCY: 12ms</div>
+                      <div>STATUS: READY</div>
                     </div>
                   </div>
                 </div>
@@ -192,7 +335,7 @@ const SpiderSense: React.FC = () => {
 
             <motion.button
               onClick={handleScan}
-              disabled={!isCameraActive || analyzing}
+              disabled={(!isCameraActive && !uploadedImage) || analyzing}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="w-full bg-red-600 text-white font-bebas text-4xl py-6 border-2 border-white shadow-[0_15px_40px_rgba(226,54,54,0.4)] disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-4"

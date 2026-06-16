@@ -1,6 +1,6 @@
 
-import React, { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+import React, { useRef, useEffect } from 'react';
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
 
 const Hero: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -16,25 +16,60 @@ const Hero: React.FC = () => {
     restDelta: 0.001
   });
 
-  // Dramatic transforms for a tighter 120vh section
-  const bgScale = useTransform(smoothProgress, [0, 1], [1, 1.5]);
-  const bgY = useTransform(smoothProgress, [0, 1], [0, -50]);
-  const bgOpacity = useTransform(smoothProgress, [0.7, 1], [1, 0.5]);
+  // Mouse Parallax Setup
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
-  const spideyScale = useTransform(smoothProgress, [0, 0.5, 1], [0.85, 1.1, 2]);
-  const spideyY = useTransform(smoothProgress, [0, 1], [0, -200]);
-  const spideyOpacity = useTransform(smoothProgress, [0, 0.9, 1], [1, 1, 0]);
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const { clientX, clientY } = e;
+      const { innerWidth, innerHeight } = window;
+      const x = (clientX / innerWidth) - 0.5;
+      const y = (clientY / innerHeight) - 0.5;
+      mouseX.set(x);
+      mouseY.set(y);
+    };
 
-  const textOpacity = useTransform(smoothProgress, [0, 0.6, 1], [1, 0.8, 0]);
-  const textScale = useTransform(smoothProgress, [0, 0.7], [1, 1.2]);
-  const textY = useTransform(smoothProgress, [0, 0.7], [0, -80]);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  // Spring values for mouse parallax to keep the movement silky smooth
+  const mouseXSpring = useSpring(mouseX, { stiffness: 50, damping: 20 });
+  const mouseYSpring = useSpring(mouseY, { stiffness: 50, damping: 20 });
+
+  // 3D Parallax Tilt Offsets
+  const bgMouseX = useTransform(mouseXSpring, [-0.5, 0.5], [-15, 15]);
+  const bgMouseY = useTransform(mouseYSpring, [-0.5, 0.5], [-15, 15]);
+
+  const webMouseX = useTransform(mouseXSpring, [-0.5, 0.5], [-35, 35]);
+  const webMouseY = useTransform(mouseYSpring, [-0.5, 0.5], [-35, 35]);
+
+  const spideyMouseX = useTransform(mouseXSpring, [-0.5, 0.5], [-50, 50]);
+  const spideyMouseY = useTransform(mouseYSpring, [-0.5, 0.5], [-50, 50]);
+
+  const textMouseX = useTransform(mouseXSpring, [-0.5, 0.5], [20, -20]);
+  const textMouseY = useTransform(mouseYSpring, [-0.5, 0.5], [20, -20]);
+
+  // Scroll Parallax Transforms (re-calibrated for h-[170vh] section)
+  const bgScale = useTransform(smoothProgress, [0, 1], [1, 1.25]);
+  const bgY = useTransform(smoothProgress, [0, 1], [0, -60]);
+  const bgOpacity = useTransform(smoothProgress, [0.7, 1], [1, 0.2]);
+
+  const spideyScale = useTransform(smoothProgress, [0, 0.5, 1], [0.85, 1.15, 1.6]);
+  const spideyY = useTransform(smoothProgress, [0, 1], [0, -120]);
+  const spideyOpacity = useTransform(smoothProgress, [0, 0.8, 1], [1, 1, 0]);
+
+  const textOpacity = useTransform(smoothProgress, [0, 0.55, 1], [1, 0.8, 0]);
+  const textScale = useTransform(smoothProgress, [0, 0.65], [1, 1.12]);
+  const textY = useTransform(smoothProgress, [0, 0.65], [0, -40]);
 
   // Web Layer Parallax
-  const webScale = useTransform(smoothProgress, [0, 1], [0.7, 2.5]);
+  const webScale = useTransform(smoothProgress, [0, 1], [0.8, 2.0]);
   const webRotate = useTransform(smoothProgress, [0, 1], [0, 15]);
 
   return (
-    <section ref={containerRef} id="hero" className="h-[110vh] bg-black relative">
+    <section ref={containerRef} id="hero" className="h-[170vh] bg-black relative">
       <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
 
         {/* Atmospheric Background Gradients */}
@@ -45,16 +80,23 @@ const Hero: React.FC = () => {
 
         {/* Halftone Overlay */}
         <div className="absolute inset-0 z-[1] halftone opacity-20 pointer-events-none"></div>
+        
+        {/* Layer 1: Background Skyline */}
         <motion.div
           style={{ scale: bgScale, y: bgY, opacity: bgOpacity }}
           className="absolute inset-0 z-0 origin-center will-change-transform"
         >
-          <img
-            src="https://images.unsplash.com/photo-1514539079130-25950c84af65?q=80&w=2069&auto=format&fit=crop"
-            alt="New York Background"
-            className="w-full h-full object-cover filter brightness-[0.25] contrast-[1.4] grayscale"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black"></div>
+          <motion.div
+            style={{ x: bgMouseX, y: bgMouseY }}
+            className="w-full h-full"
+          >
+            <img
+              src="https://images.unsplash.com/photo-1514539079130-25950c84af65?q=80&w=2069&auto=format&fit=crop"
+              alt="New York Background"
+              className="w-full h-full object-cover filter brightness-[0.25] contrast-[1.4] grayscale"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black"></div>
+          </motion.div>
         </motion.div>
 
         {/* Layer 2: Parallax Web Net */}
@@ -62,24 +104,29 @@ const Hero: React.FC = () => {
           style={{ scale: webScale, rotate: webRotate, opacity: useTransform(smoothProgress, [0.1, 0.6], [0, 0.5]) }}
           className="absolute z-10 pointer-events-none flex items-center justify-center w-full h-full will-change-transform"
         >
-          <svg width="120%" height="120%" viewBox="0 0 100 100" className="text-blue-500/20 stroke-current fill-none">
-            <path d="M50 0 L50 100 M0 50 L100 50 M15 15 L85 85 M85 15 L15 85" strokeWidth="0.05" />
-            <circle cx="50" cy="50" r="10" strokeWidth="0.05" />
-            <circle cx="50" cy="50" r="25" strokeWidth="0.05" />
-            <circle cx="50" cy="50" r="45" strokeWidth="0.05" />
-            {[...Array(12)].map((_, i) => (
-              <line
-                key={i}
-                x1="50" y1="50"
-                x2={50 + 50 * Math.cos((i * 30 * Math.PI) / 180)}
-                y2={50 + 50 * Math.sin((i * 30 * Math.PI) / 180)}
-                strokeWidth="0.05"
-              />
-            ))}
-          </svg>
+          <motion.div
+            style={{ x: webMouseX, y: webMouseY }}
+            className="w-full h-full flex items-center justify-center"
+          >
+            <svg width="120%" height="120%" viewBox="0 0 100 100" className="text-blue-500/20 stroke-current fill-none">
+              <path d="M50 0 L50 100 M0 50 L100 50 M15 15 L85 85 M85 15 L15 85" strokeWidth="0.05" />
+              <circle cx="50" cy="50" r="10" strokeWidth="0.05" />
+              <circle cx="50" cy="50" r="25" strokeWidth="0.05" />
+              <circle cx="50" cy="50" r="45" strokeWidth="0.05" />
+              {[...Array(12)].map((_, i) => (
+                <line
+                  key={i}
+                  x1="50" y1="50"
+                  x2={50 + 50 * Math.cos((i * 30 * Math.PI) / 180)}
+                  y2={50 + 50 * Math.sin((i * 30 * Math.PI) / 180)}
+                  strokeWidth="0.05"
+                />
+              ))}
+            </svg>
+          </motion.div>
         </motion.div>
 
-        {/* Layer 3: Hero Shadow Sequence */}
+        {/* Layer 3: Hero Shadow Sequence (Spiderman Silhouette) */}
         <motion.div
           style={{
             scale: spideyScale,
@@ -88,17 +135,22 @@ const Hero: React.FC = () => {
           }}
           className="absolute z-20 w-[80%] md:w-[50%] pointer-events-none mix-blend-screen overflow-visible will-change-transform"
         >
-          <img
-            src="https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1974&auto=format&fit=crop"
-            alt="Spiderman Silhouette"
-            className="w-full drop-shadow-[0_0_30px_rgba(226,54,54,0.6)]"
-          />
-          {/* Trail Effect Simulation */}
           <motion.div
-            style={{ opacity: useTransform(smoothProgress, [0.2, 0.5], [0, 0.3]), scale: 1.1 }}
-            className="absolute inset-0 grayscale contrast-200 blur-md pointer-events-none will-change-[opacity,transform]"
+            style={{ x: spideyMouseX, y: spideyMouseY }}
+            className="w-full h-full relative"
           >
-            <img src="https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1974&auto=format&fit=crop" className="w-full h-full object-contain" />
+            <img
+              src="https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1974&auto=format&fit=crop"
+              alt="Spiderman Silhouette"
+              className="w-full drop-shadow-[0_0_30px_rgba(226,54,54,0.6)]"
+            />
+            {/* Trail Effect Simulation */}
+            <motion.div
+              style={{ opacity: useTransform(smoothProgress, [0.2, 0.5], [0, 0.3]), scale: 1.1 }}
+              className="absolute inset-0 grayscale contrast-200 blur-md pointer-events-none will-change-[opacity,transform]"
+            >
+              <img src="https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1974&auto=format&fit=crop" className="w-full h-full object-contain" />
+            </motion.div>
           </motion.div>
         </motion.div>
 
@@ -136,7 +188,10 @@ const Hero: React.FC = () => {
           style={{ opacity: textOpacity, scale: textScale, y: textY }}
           className="relative z-40 text-center px-4 md:mt-24 will-change-transform"
         >
-          <div className="flex flex-col items-center">
+          <motion.div
+            style={{ x: textMouseX, y: textMouseY }}
+            className="flex flex-col items-center"
+          >
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
@@ -163,7 +218,7 @@ const Hero: React.FC = () => {
                 WEAVING COMPLEX ALGORITHMS INTO SEAMLESS USER EXPERIENCES
               </p>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
 
         {/* Scroll HUD */}
@@ -186,3 +241,5 @@ const Hero: React.FC = () => {
 };
 
 export default Hero;
+
+

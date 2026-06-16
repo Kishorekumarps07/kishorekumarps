@@ -11,7 +11,8 @@
   --foreground: #ffffff;
 }
 
-body {
+html, body {
+  position: relative;
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);

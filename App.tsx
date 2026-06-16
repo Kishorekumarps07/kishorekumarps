@@ -32,14 +32,14 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-black selection:bg-red-600 selection:text-white overflow-x-hidden font-inter">
+    <div className="relative min-h-screen bg-black selection:bg-red-600 selection:text-white overflow-x-clip font-inter">
       {/* Cinematic Grain & Scanning Lines Overlay */}
       <div className="fixed inset-0 pointer-events-none z-[60] opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
       <div className="fixed inset-0 pointer-events-none z-[60] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] bg-[length:100%_4px,3px_100%]"></div>
 
       <Navbar />
 
-      <main>
+      <main className="relative">
         <Hero />
 
         {/* Dynamic Warning Marquee - Overlapping for seamless transition */}
